@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let squares = [];
   let mineCount = 20;
   let isGameOver = false;
+  let flags = 0;
 
   //build minesweep board
   function buildBoard() {
@@ -31,6 +32,12 @@ document.addEventListener("DOMContentLoaded", () => {
       square.addEventListener("click", function (e) {
         clicked(square);
       });
+
+      //add flagged event handler
+      square.oncontextmenu = function (e) {
+        e.preventDefault();
+        addFlag(square);
+      };
     }
 
     //Get immediate mines number
@@ -39,13 +46,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
       //Get leftEdge and rightEdge squares
       const isLeftEdge = i % width === 0;
-      const isRightEdge = i % width === -1;
+      const isRightEdge = i % width === width - 1;
 
       //count mines around squares
       if (squares[i].classList.contains("safe")) {
         if (i > 0 && !isLeftEdge && squares[i - 1].classList.contains("bomb"))
           total++;
-        if (i > 9 && !isRightEdge && squares[i + 1].classList.contains("bomb"))
+        if (
+          i > 9 &&
+          !isRightEdge &&
+          squares[i + 1 - width].classList.contains("bomb")
+        )
           total++;
         if (i > 10 && squares[i - width].classList.contains("bomb")) total++;
         if (
@@ -80,11 +91,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isGameOver) return;
     if (
       square.classList.contains("checked") ||
-      square.classList.contains("flaged")
+      square.classList.contains("flagged")
     )
       return;
     if (square.classList.contains("bomb")) {
-      alert("Game Over!");
+      gameOver(square);
     } else {
       let total = square.getAttribute("data");
       if (total != 0) {
@@ -92,8 +103,110 @@ document.addEventListener("DOMContentLoaded", () => {
         square.innerHTML = total;
         return;
       }
-      checkSquare(square, currentId);
-      square.classList.add("checked");
+      checkSquare(square);
+    }
+    square.classList.add("checked");
+  }
+
+  //Add flag upon right clicking
+  function addFlag(square) {
+    if (isGameOver) return;
+    if (!square.classList.contains("checked") && flags < mineCount) {
+      if (!square.classList.contains("flagged")) {
+        square.classList.add("flagged");
+        square.innerHTML = "🚩";
+        flags++;
+        winCheck();
+      } else {
+        square.classList.remove("flagged");
+        square.innerHTML = "";
+        flags--;
+      }
+    }
+  }
+
+  //Recursively check neighbouring squres upon safe square click
+  function checkSquare(square) {
+    const isLeftEdge = square.id % width === 0;
+    const isRightEdge = square.id % width === width - 1;
+
+    setTimeout(() => {
+      if (square.id > 0 && !isLeftEdge) {
+        const newId = squares[parseInt(square.id) - 1].id;
+        const newSquare = document.getElementById(newId);
+        clicked(newSquare);
+      }
+
+      if (square.id > 9 && !isRightEdge) {
+        const newId = squares[parseInt(square.id) + 1 - width].id;
+        const newSquare = document.getElementById(newId);
+        clicked(newSquare);
+      }
+
+      if (square.id > 10) {
+        const newId = squares[parseInt(square.id) - width].id;
+        const newSquare = document.getElementById(newId);
+        clicked(newSquare);
+      }
+
+      if (square.id > 11 && !isLeftEdge) {
+        const newId = squares[parseInt(square.id) - 1 - width].id;
+        const newSquare = document.getElementById(newId);
+        clicked(newSquare);
+      }
+
+      if (square.id < 98 && !isRightEdge) {
+        const newId = squares[parseInt(square.id) + 1].id;
+        const newSquare = document.getElementById(newId);
+        clicked(newSquare);
+      }
+
+      if (square.id < 90 && !isLeftEdge) {
+        const newId = squares[parseInt(square.id) - 1 + width].id;
+        const newSquare = document.getElementById(newId);
+        clicked(newSquare);
+      }
+
+      if (square.id < 88 && !isRightEdge) {
+        const newId = squares[parseInt(square.id) + 1 + width].id;
+        const newSquare = document.getElementById(newId);
+        clicked(newSquare);
+      }
+
+      if (square.id < 89) {
+        const newId = squares[parseInt(square.id) + width].id;
+        const newSquare = document.getElementById(newId);
+        clicked(newSquare);
+      }
+    }, 10);
+  }
+
+  //"gameOver" function, user tripped a mine
+  function gameOver(square) {
+    alert("GameOver");
+    isGameOver = true;
+
+    //reveal all mines
+    squares.forEach((square) => {
+      if (square.classList.contains("bomb")) {
+        square.innerHTML = "💣";
+      }
+    });
+  }
+
+  // Win Check function
+  function winCheck() {
+    let matches = 0;
+    for (let i = 0; i < squares.length; i++) {
+      if (
+        squares[i].classList.contains("flagged") &&
+        squares[i].classList.contains("bomb")
+      )
+        matches++;
+      if (matches === mineCount) {
+        alert("You Win!");
+        isGameOver = true;
+      }
     }
   }
 });
